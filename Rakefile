@@ -8,5 +8,3 @@ desc "Run Specs"
 task :spec do 
 	system 'bundle exec rspec --color --format documentation spec/*_spec.rb'
 end
-	
-end

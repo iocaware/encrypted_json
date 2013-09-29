@@ -11,40 +11,29 @@ module EncryptedJson
   		@digest = digest
   	end
 
-  	def public_encrypt(input) 
+  	def encrypt(input, password = '') 
   		begin
-  			[sign(input), Base64.encode64(key.public_encrypt(input.to_json))]
+  			if @key.private?
+  				data = Base64.encode64(@key.private_encrypt(input.to_json, password))
+  			else
+  				data = Base64.encode64(@key.public_encrypt(input.to_json))
+  			end
+  			[sign(input), data]
   		rescue
   			raise EncryptionError
   		end
   	end
 
-  	def public_decrypt(input)
+  	def decrypt(input, password = '')
   		data = ""
   		digest, edata = json_decode(input)
   		begin
-  			data = Base64.decode64(key.public_decrypt(edata))
+  			if @key.private?
+  				data = Base64.decode64(@key.private_decrypt(edata, password))
+  			else
+  				data = Base64.decode64(@key.public_decrypt(edata))
+  			end
   		rescue 
-  			raise DecryptionError
-  		end
-  		raise SignatureError unless digest == sign(data)
-  		data
-  	end
-
-  	def private_encrypt(input)
-  		begin
-  			[sign(input), Base64.encode64(key.private_encrypt(input.to_json, password))]
-  		rescue
-  			raise EncryptionError
-  		end
-  	end
-
-  	def private_decrypt(input, password)
-  		data = ""
-  		digest, edata = json_decode(input)
-  		begin
-  			data = Base64.decode64(key.private_decrypt(edata), password)
-  		rescue
   			raise DecryptionError
   		end
   		raise SignatureError unless digest == sign(data)
@@ -63,7 +52,11 @@ module EncryptedJson
 
   	def sign(input)
   		digest = OpenSSL::Digest.const_get(@digest).new
-  		secret = Digest::MD5.hexdigest(key.to_der)
+  		if @key.private?
+  			secret = Digest::MD5.hexdigest(@key.public_key.to_der)
+  		else
+  			secret = Digest::MD5.hexdigest(@key.to_der)
+  		end
   		OpenSSL::HMAC.hexdigest(digest, secret, input.to_json)
   	end
   end
