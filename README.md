@@ -1,3 +1,4 @@
+[![Gem Version](https://badge.fury.io/rb/encrypted_json.png)](http://badge.fury.io/rb/encrypted_json)
 # EncryptedJson
 
 This is a library to do encryption of JSON 
