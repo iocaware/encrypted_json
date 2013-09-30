@@ -6,20 +6,30 @@ require 'openssl' unless defined?(OpenSSL)
 
 module EncryptedJson
   class Secure
-  	def initialize(key, digest='SHA1')
-  		@key = OpenSSL::PKey::RSA.new(key)
+
+  	def initialize(key, password='', digest='SHA1')
+  		if password != ''
+  			@key = OpenSSL::PKey::RSA.new(key, password)
+  		else
+  			@key = OpenSSL::PKey::RSA.new(key)
+  		end
   		@digest = digest
   	end
 
   	def encrypt(input, password = '') 
+  		if input.is_a?(String)
+  			i = input
+  		else
+  			i = input.to_json
+  		end
   		begin
   			if @key.private?
-  				data = Base64.encode64(@key.private_encrypt(input.to_json, password))
+  				data = Base64.encode64(@key.private_encrypt(i))
   			else
-  				data = Base64.encode64(@key.public_encrypt(input.to_json))
+  				data = Base64.encode64(@key.public_encrypt(i))
   			end
-  			[sign(input), data]
-  		rescue
+  			[sign(i), data].to_json
+  		rescue => e
   			raise EncryptionError
   		end
   	end
@@ -29,15 +39,19 @@ module EncryptedJson
   		digest, edata = json_decode(input)
   		begin
   			if @key.private?
-  				data = Base64.decode64(@key.private_decrypt(edata, password))
+  				data = @key.private_decrypt(Base64.decode64(edata))
   			else
-  				data = Base64.decode64(@key.public_decrypt(edata))
+  				data = @key.public_decrypt(Base64.decode64(edata))
   			end
-  		rescue 
+  		rescue => e
   			raise DecryptionError
   		end
   		raise SignatureError unless digest == sign(data)
-  		data
+  		begin
+  			JSON.parse(data)
+  		rescue
+  			data
+  		end
   	end
 
   	def json_decode(input)
@@ -57,7 +71,7 @@ module EncryptedJson
   		else
   			secret = Digest::MD5.hexdigest(@key.to_der)
   		end
-  		OpenSSL::HMAC.hexdigest(digest, secret, input.to_json)
+  		OpenSSL::HMAC.hexdigest(digest, secret, input)
   	end
   end
 end
