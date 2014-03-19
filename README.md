@@ -59,6 +59,7 @@ data = JSON.parse(e.decrypt(encrypted_json))
 ```
 
 **Errors**
+
 There are multiple errors that can happen
 
 * InputError - this is self explanitory
